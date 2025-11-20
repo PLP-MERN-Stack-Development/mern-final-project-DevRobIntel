@@ -34,4 +34,37 @@ router.post('/:id/comment', auth, async (req, res) => {
   res.json(comment);
 });
 
+// server/routes/posts.js
+router.get('/', async (req, res) => {
+  try {
+    // SAFELY parse page and limit — THIS FIXES THE CRASH
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 6;
+
+    // PREVENT NEGATIVE OR ZERO VALUES
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 6;
+    if (limit > 50) limit = 50; // optional: max limit
+
+    const skip = (page - 1) * limit;
+
+    const total = await Post.countDocuments();
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'username');
+
+    res.json({
+      posts,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalPosts: total
+    });
+  } catch (err) {
+    console.error('Posts fetch error:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 export default router;
